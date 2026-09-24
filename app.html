@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SipPace - App</title>
+<style>
+  :root { --bg:#08131a; --card:#0e1e28; --edge:#1d3442; --ink:#e6f0f5; --dim:#8fa9b8; --accent:#3cc2e0; --good:#5ecf7a; --warn:#ffcf3c; --bad:#e07856; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; padding:28px 18px 60px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:22px; }
+  h1 { font-size:1.5rem; } h1 .p { color:var(--accent); }
+  a.home { color:var(--dim); text-decoration:none; font-size:0.9rem; }
+  section { background:var(--card); border:1px solid var(--edge); border-radius:14px; padding:20px; margin-bottom:20px; }
+  h2 { font-size:1.05rem; margin-bottom:14px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .field { display:flex; flex-direction:column; gap:5px; flex:1; min-width:100px; }
+  label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.6px; color:var(--dim); }
+  input, select, button { font:inherit; border-radius:8px; border:1px solid var(--edge); padding:10px 12px; background:#08131a; color:var(--ink); }
+  input:focus, select:focus { outline:none; border-color:var(--accent); }
+  button { cursor:pointer; background:var(--accent); border:none; color:#03202a; font-weight:700; }
+  button:hover { filter:brightness(1.1); }
+  .pace { text-align:center; padding:6px 0; }
+  .pace .big { font-size:3rem; font-weight:800; letter-spacing:-1px; }
+  .pace.ahead .big { color:var(--good); }
+  .pace.on-track .big { color:var(--accent); }
+  .pace.behind .big { color:var(--warn); }
+  .pace.dry .big { color:var(--bad); }
+  .pace .sub { color:var(--dim); margin-top:6px; font-size:0.95rem; }
+  .bar { height:10px; border-radius:999px; background:#08131a; border:1px solid var(--edge); overflow:hidden; margin-top:14px; }
+  .bar i { display:block; height:100%; background:var(--accent); transition:width .4s; }
+  .bar .mark { position:relative; }
+  .barwrap { position:relative; }
+  .barwrap .tick { position:absolute; top:-4px; width:2px; height:18px; background:var(--warn); }
+  .pours { display:flex; gap:10px; flex-wrap:wrap; }
+  .pours button { flex:1; min-width:110px; padding:14px 10px; }
+  .pours button small { display:block; font-weight:400; color:#0a3a47; font-size:0.75rem; margin-top:2px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+  .stat { background:#08131a; border:1px solid var(--edge); border-radius:10px; padding:14px; }
+  .stat .v { font-size:1.35rem; font-weight:700; color:var(--accent); }
+  .stat .l { color:var(--dim); font-size:0.78rem; margin-top:3px; }
+  .log { display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--edge); }
+  .log:last-child { border-bottom:none; }
+  .log .t { font-weight:600; min-width:64px; }
+  .log .meta { color:var(--dim); font-size:0.85rem; flex:1; }
+  .log button.act { background:transparent; border:1px solid var(--edge); color:var(--dim); font-weight:400; font-size:0.8rem; padding:5px 10px; }
+  .log button.act:hover { color:var(--ink); border-color:var(--accent); }
+  .empty { color:var(--dim); text-align:center; padding:16px; font-size:0.95rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Sip<span class="p">Pace</span></h1>
+    <a class="home" href="index.html">&larr; Home</a>
+  </header>
+
+  <section>
+    <h2>You</h2>
+    <div class="row">
+      <div class="field"><label>Weight (kg)</label><input id="f-weight" type="number" min="20" max="300" step="1" value="70"></div>
+      <div class="field"><label>Wake hour</label><input id="f-wake" type="number" min="0" max="23" step="1" value="7"></div>
+      <div class="field"><label>Sleep hour</label><input id="f-sleep" type="number" min="0" max="23" step="1" value="23"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Right now</h2>
+    <div class="pace on-track" id="pace">
+      <div class="big" id="pace-big">-</div>
+      <div class="sub" id="pace-sub"></div>
+    </div>
+    <div class="barwrap">
+      <div class="bar"><i id="bar-fill" style="width:0%"></i></div>
+      <div class="tick" id="bar-tick" style="left:0%"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Log a drink</h2>
+    <div class="pours">
+      <button data-ml="200">Glass<small>200 ml</small></button>
+      <button data-ml="0" id="pour-suggest">Suggested<small id="pour-suggest-ml"></small></button>
+      <button data-ml="500">Bottle<small>500 ml</small></button>
+      <button data-ml="750">Large<small>750 ml</small></button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Today</h2>
+    <div class="stats">
+      <div class="stat"><div class="v" id="s-had">0 ml</div><div class="l">drunk so far</div></div>
+      <div class="stat"><div class="v" id="s-target">-</div><div class="l">daily target</div></div>
+      <div class="stat"><div class="v" id="s-left">-</div><div class="l">to go</div></div>
+      <div class="stat"><div class="v" id="s-streak">0</div><div class="l">day streak</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Log</h2>
+    <div id="list"><div class="empty">Nothing logged yet today.</div></div>
+  </section>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  var KEY = 'sippace-entries';
+  var PREF = 'sippace-prefs';
+  var $ = function (id) { return document.getElementById(id); };
+
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+  function save(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
+  function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREF)) || {}; } catch (e) { return {}; } }
+  function savePrefs(p) { localStorage.setItem(PREF, JSON.stringify(p)); }
+
+  var prefs = loadPrefs();
+  if (prefs.weight) $('f-weight').value = prefs.weight;
+  if (prefs.wake !== undefined) $('f-wake').value = prefs.wake;
+  if (prefs.sleep !== undefined) $('f-sleep').value = prefs.sleep;
+
+  function cur() {
+    return {
+      weight: Number($('f-weight').value) || 70,
+      wake: Number($('f-wake').value),
+      sleep: Number($('f-sleep').value)
+    };
+  }
+
+  function fmtClock(d) { return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  function fmtMl(ml) { return ml >= 1000 ? (Math.round(ml / 100) / 10) + ' L' : ml + ' ml'; }
+
+  var timer = null;
+
+  function render() {
+    var p = cur();
+    savePrefs(p);
+    var target = SipEngine.targetMl(p.weight);
+    var now = new Date();
+    var entries = load();
+    var had = SipEngine.dayTotal(entries, now);
+    var expected = SipEngine.expectedByNow(target, p.wake, p.sleep, now);
+    var status = SipEngine.paceStatus(had, expected);
+    var left = SipEngine.remaining(target, had);
+
+    var pace = $('pace');
+    pace.className = 'pace ' + status;
+    $('pace-big').textContent = fmtMl(had);
+    $('pace-sub').textContent =
+      (status === 'ahead' ? 'Ahead of pace - ' : status === 'on-track' ? 'On track - ' : status === 'behind' ? 'Behind pace - ' : 'Running dry - ') +
+      'even pace would be ' + fmtMl(expected) + ' by now.';
+
+    $('bar-fill').style.width = Math.min(100, Math.round(had / target * 100)) + '%';
+    $('bar-tick').style.left = Math.min(100, Math.round(expected / target * 100)) + '%';
+
+    $('s-had').textContent = fmtMl(had);
+    $('s-target').textContent = fmtMl(target);
+    $('s-left').textContent = fmtMl(left);
+    $('s-streak').textContent = SipEngine.streak(entries, function () { return target; }, now);
+
+    var pour = SipEngine.suggestedPour(target);
+    $('pour-suggest').setAttribute('data-ml', pour);
+    $('pour-suggest-ml').textContent = pour + ' ml';
+
+    var key = now.toDateString();
+    var todays = entries.filter(function (x) { return new Date(x.at).toDateString() === key; });
+    var list = $('list');
+    list.innerHTML = '';
+    if (!todays.length) list.innerHTML = '<div class="empty">Nothing logged yet today.</div>';
+    todays.slice().reverse().forEach(function (x) {
+      var row = document.createElement('div');
+      row.className = 'log';
+      row.innerHTML = '<span class="t">' + fmtClock(new Date(x.at)) + '</span><span class="meta">' + x.ml + ' ml</span><button class="act">Remove</button>';
+      row.querySelector('button').addEventListener('click', function () {
+        save(load().filter(function (y) { return y.id !== x.id; }));
+        render();
+      });
+      list.appendChild(row);
+    });
+
+    if (timer) clearInterval(timer);
+    timer = setInterval(render, 60000);
+  }
+
+  document.querySelectorAll('.pours button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ml = Number(b.getAttribute('data-ml'));
+      if (!ml) return;
+      var entries = load();
+      entries.push({ id: 'e' + Date.now() + Math.floor(Math.random() * 1000), ml: ml, at: new Date().toISOString() });
+      save(entries);
+      render();
+    });
+  });
+
+  ['f-weight', 'f-wake', 'f-sleep'].forEach(function (id) { $(id).addEventListener('change', render); });
+
+  render();
+})();
+</script>
+</body>
+</html>
